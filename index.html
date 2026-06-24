@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Akash.dev | Swarnadeep Nandi</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #050a0f;
+    --bg2: #080f18;
+    --panel: #0b1622;
+    --panel2: #0e1d2e;
+    --cyan: #00ffe5;
+    --cyan2: #00ccb8;
+    --purple: #a855f7;
+    --pink: #f472b6;
+    --green: #39ff14;
+    --yellow: #ffd700;
+    --red: #ff3b3b;
+    --text: #c8d8e8;
+    --text2: #7a9ab5;
+    --border: rgba(0,255,229,0.18);
+    --glow: 0 0 18px rgba(0,255,229,0.45), 0 0 40px rgba(0,255,229,0.18);
+    --glow-purple: 0 0 18px rgba(168,85,247,0.5), 0 0 40px rgba(168,85,247,0.2);
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-display: 'Orbitron', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--cyan2); border-radius: 3px; }
+
+  /* ── CANVAS BG ── */
+  #bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35; }
+
+  /* ── MATRIX OVERLAY ── */
+  #matrixOverlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.92);
+    flex-direction: column; align-items: center; justify-content: center;
+  }
+  #matrixOverlay.active { display: flex; }
+  #matrixCanvas { position: absolute; inset: 0; }
+  #matrixMsg {
+    position: relative; z-index: 2;
+    font-family: var(--font-display); font-size: clamp(1.5rem,4vw,3rem);
+    color: var(--green); text-shadow: 0 0 30px var(--green);
+    text-align: center; animation: pulse 1s infinite alternate;
+  }
+  #matrixClose {
+    position: relative; z-index: 2; margin-top: 2rem;
+    padding: .7rem 2rem; background: transparent; border: 2px solid var(--green);
+    color: var(--green); font-family: var(--font-mono); font-size: 1rem;
+    cursor: pointer; border-radius: 4px;
+    box-shadow: 0 0 12px rgba(57,255,20,0.4);
+    transition: all .2s;
+  }
+  #matrixClose:hover { background: var(--green); color: #000; }
+
+  /* ── MUTE BTN ── */
+  #muteBtn {
+    position: fixed; bottom: 5.5rem; right: 1.5rem; z-index: 800;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--panel2); border: 1px solid var(--border);
+    color: var(--cyan); font-size: 1.2rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--glow); transition: all .2s;
+  }
+  #muteBtn:hover { background: var(--cyan); color: #000; }
+
+  /* ── CHAT BTN ── */
+  #chatToggle {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 800;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg,var(--purple),var(--cyan));
+    border: none; font-size: 1.5rem; cursor: pointer;
+    box-shadow: var(--glow-purple); transition: transform .2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #chatToggle:hover { transform: scale(1.1); }
+  #chatBox {
+    position: fixed; bottom: 5.5rem; right: 1.5rem; z-index: 799;
+    width: min(360px, calc(100vw - 2rem));
+    height: 480px; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 16px;
+    display: none; flex-direction: column; overflow: hidden;
+    box-shadow: var(--glow-purple);
+  }
+  #chatBox.open { display: flex; }
+  #chatHeader {
+    padding: .8rem 1rem; background: linear-gradient(90deg,var(--purple),var(--cyan));
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font-display); font-size: .8rem; color: #000; font-weight: 700;
+  }
+  #chatMessages {
+    flex: 1; overflow-y: auto; padding: .8rem; display: flex; flex-direction: column; gap: .6rem;
+  }
+  .chat-msg { max-width: 85%; padding: .55rem .85rem; border-radius: 12px; font-size: .85rem; line-height: 1.4; }
+  .chat-msg.user { background: var(--purple); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .chat-msg.ai { background: var(--panel); color: var(--text); align-self: flex-start; border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+  .chat-msg.typing { color: var(--text2); font-style: italic; }
+  #chatInputRow { display: flex; padding: .6rem; gap: .5rem; border-top: 1px solid var(--border); }
+  #chatInput { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; color: var(--text); font-family: var(--font-body); font-size: .85rem; outline: none; }
+  #chatInput:focus { border-color: var(--purple); }
+  #chatSend { padding: .5rem .9rem; background: var(--purple); border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 1rem; transition: all .2s; }
+  #chatSend:hover { background: var(--cyan); color: #000; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 700;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .85rem 2rem;
+    background: rgba(5,10,15,0.85);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: var(--font-display); font-size: 1.2rem; font-weight: 900;
+    color: var(--cyan); text-shadow: var(--glow);
+    text-decoration: none; letter-spacing: 2px;
+  }
+  .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+  .nav-links a { color: var(--text2); font-size: .85rem; text-decoration: none; font-family: var(--font-mono); transition: color .2s; }
+  .nav-links a:hover { color: var(--cyan); }
+  #hamburger { display: none; background: none; border: 1px solid var(--border); color: var(--cyan); padding: .4rem .7rem; border-radius: 6px; cursor: pointer; font-size: 1.1rem; }
+  @media(max-width:680px){
+    .nav-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel); padding: 1rem 2rem; gap: 1rem; border-bottom: 1px solid var(--border); }
+    .nav-links.open { display: flex; }
+    #hamburger { display: block; }
+  }
+
+  /* ── WRAPPER ── */
+  main { position: relative; z-index: 1; }
+  section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding-top: 5rem; gap: 1.5rem; max-width: 100%;
+  }
+  .hero-img-wrap {
+    width: 140px; height: 140px; border-radius: 50%; position: relative;
+    border: 3px solid var(--cyan);
+    box-shadow: 0 0 0 6px rgba(0,255,229,0.12), var(--glow);
+    overflow: hidden; flex-shrink: 0;
+  }
+  .hero-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .hero-img-wrap .img-fallback {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg,var(--purple),var(--cyan));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 2.5rem; color: #000; font-weight: 900;
+  }
+  .hero-name {
+    font-family: var(--font-display); font-size: clamp(1.8rem,5vw,3.4rem); font-weight: 900;
+    line-height: 1.1; letter-spacing: 2px;
+    background: linear-gradient(90deg,var(--cyan),var(--purple),var(--pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-handle {
+    font-family: var(--font-mono); font-size: clamp(.9rem,2.5vw,1.2rem);
+    color: var(--cyan); text-shadow: var(--glow); letter-spacing: 3px;
+  }
+  .hero-tag {
+    font-size: clamp(.85rem,2vw,1.05rem); color: var(--text2); max-width: 540px; line-height: 1.6;
+  }
+  .hero-tag span { color: var(--cyan); }
+  .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: .5rem; }
+  .btn {
+    padding: .7rem 1.8rem; border-radius: 8px; font-family: var(--font-mono); font-size: .9rem;
+    cursor: pointer; transition: all .25s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem;
+  }
+  .btn-primary { background: var(--cyan); color: #000; border: none; font-weight: 700; box-shadow: var(--glow); }
+  .btn-primary:hover { background: var(--cyan2); transform: translateY(-2px); }
+  .btn-outline { background: transparent; color: var(--cyan); border: 1.5px solid var(--cyan); }
+  .btn-outline:hover { background: rgba(0,255,229,0.1); transform: translateY(-2px); }
+  .scroll-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--text2); animation: bounce 2s infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+
+  /* ── SECTION HEADER ── */
+  .sec-header { text-align: center; margin-bottom: 3rem; }
+  .sec-eyebrow { font-family: var(--font-mono); font-size: .8rem; color: var(--cyan); letter-spacing: 4px; text-transform: uppercase; margin-bottom: .5rem; }
+  .sec-title { font-family: var(--font-display); font-size: clamp(1.6rem,4vw,2.4rem); font-weight: 900; color: #fff; }
+  .sec-title .accent { color: var(--cyan); text-shadow: var(--glow); }
+  .sec-divider { width: 60px; height: 3px; background: linear-gradient(90deg,var(--cyan),var(--purple)); margin: 1rem auto 0; border-radius: 2px; }
+
+  /* ── ABOUT ── */
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  @media(max-width:720px){ .about-grid { grid-template-columns: 1fr; } }
+  .about-text p { color: var(--text2); line-height: 1.75; margin-bottom: 1rem; font-size: .97rem; }
+  .about-text p strong { color: var(--cyan); }
+  .info-pills { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  .pill {
+    padding: .35rem .9rem; border-radius: 20px; font-size: .78rem; font-family: var(--font-mono);
+    border: 1px solid var(--border); background: var(--panel); color: var(--cyan);
+    transition: all .2s;
+  }
+  .pill:hover { background: rgba(0,255,229,0.1); box-shadow: var(--glow); }
+
+  /* ── TERMINAL ── */
+  .terminal {
+    background: #010a05; border: 1px solid #1a3a1a; border-radius: 10px;
+    overflow: hidden; box-shadow: 0 0 30px rgba(57,255,20,0.12);
+    font-family: var(--font-mono);
+  }
+  .terminal-bar {
+    background: #0d1a0d; padding: .55rem 1rem; display: flex; align-items: center; gap: .5rem;
+    border-bottom: 1px solid #1a3a1a;
+  }
+  .t-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .t-dot.r { background: #ff5f56; } .t-dot.y { background: #febc2e; } .t-dot.g { background: var(--green); }
+  .terminal-title { font-size: .75rem; color: #4a7a4a; margin-left: .5rem; }
+  .terminal-body { padding: 1rem; min-height: 220px; max-height: 320px; overflow-y: auto; font-size: .82rem; line-height: 1.6; }
+  .t-line { margin-bottom: .2rem; }
+  .t-prompt { color: var(--green); } .t-path { color: var(--cyan); } .t-cmd { color: #fff; }
+  .t-out { color: #7aff7a; }  .t-err { color: var(--red); } .t-info { color: var(--cyan); }
+  .t-input-row { display: flex; align-items: center; padding: 0 1rem 1rem; gap: .5rem; }
+  .t-input-prefix { color: var(--green); font-size: .82rem; white-space: nowrap; font-family: var(--font-mono); }
+  #termInput { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: var(--font-mono); font-size: .82rem; caret-color: var(--green); }
+
+  /* ── PROJECTS ── */
+  .projects-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 1.5rem; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; transition: transform .25s, box-shadow .25s; position: relative;
+  }
+  .card:hover { transform: translateY(-6px); box-shadow: var(--glow); border-color: var(--cyan); }
+  .card-img { width: 100%; height: 180px; object-fit: cover; display: block; background: var(--panel2); }
+  .card-img-fallback {
+    width: 100%; height: 180px;
+    background: linear-gradient(135deg,var(--panel2),var(--panel));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+  }
+  .card-body { padding: 1.2rem; }
+  .card-tag { font-family: var(--font-mono); font-size: .7rem; color: var(--purple); letter-spacing: 2px; text-transform: uppercase; margin-bottom: .4rem; }
+  .card-title { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: .5rem; }
+  .card-desc { font-size: .85rem; color: var(--text2); line-height: 1.55; }
+  .card-badge {
+    position: absolute; top: .8rem; right: .8rem;
+    padding: .25rem .65rem; border-radius: 20px; font-size: .68rem; font-family: var(--font-mono);
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  }
+  .badge-live { border: 1px solid var(--green); color: var(--green); }
+  .badge-upcoming { border: 1px solid var(--yellow); color: var(--yellow); }
+
+  /* ── GAME ── */
+  #game-section { text-align: center; }
+  #snakeWrap {
+    display: inline-block; position: relative;
+    background: #010a05; border: 2px solid var(--green);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 30px rgba(57,255,20,0.25);
+  }
+  #snakeCanvas { display: block; }
+  .game-controls { display: flex; gap: 1rem; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 1rem; }
+  .game-score-box {
+    font-family: var(--font-mono); font-size: .9rem; color: var(--green);
+    background: var(--panel); border: 1px solid #1a3a1a; padding: .4rem 1rem; border-radius: 6px;
+  }
+  .btn-green { background: var(--green); color: #000; border: none; font-weight: 700; box-shadow: 0 0 14px rgba(57,255,20,0.4); }
+  .btn-green:hover { opacity: .85; transform: translateY(-2px); }
+  .game-hint { font-family: var(--font-mono); font-size: .75rem; color: var(--text2); margin-top: .6rem; }
+
+  /* ── FEEDBACK ── */
+  .feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media(max-width:720px){ .feedback-grid { grid-template-columns: 1fr; } }
+  .glass-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem;
+  }
+  .stat-box {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem;
+  }
+  .stat-icon { font-size: 2rem; }
+  .stat-num { font-family: var(--font-display); font-size: 2rem; font-weight: 900; color: var(--cyan); text-shadow: var(--glow); }
+  .stat-label { font-size: .8rem; color: var(--text2); font-family: var(--font-mono); }
+  #likeBtn {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .8rem 1.8rem; border-radius: 10px;
+    background: linear-gradient(135deg,var(--pink),var(--purple));
+    border: none; color: #fff; font-family: var(--font-display); font-size: .9rem;
+    cursor: pointer; transition: all .25s; box-shadow: var(--glow-purple);
+    font-weight: 700; letter-spacing: 1px; width: 100%; justify-content: center;
+  }
+  #likeBtn:hover:not(:disabled) { transform: scale(1.03); }
+  #likeBtn:disabled { opacity: .5; cursor: default; }
+  .comment-form { display: flex; flex-direction: column; gap: .8rem; }
+  .comment-form input, .comment-form textarea {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: .7rem 1rem; color: var(--text); font-family: var(--font-body); font-size: .9rem;
+    outline: none; transition: border-color .2s; resize: vertical;
+  }
+  .comment-form input:focus, .comment-form textarea:focus { border-color: var(--cyan); }
+  .comment-form textarea { min-height: 90px; }
+  #submitComment { align-self: flex-start; }
+  .comment-list { margin-top: 1.5rem; display: flex; flex-direction: column; gap: .8rem; max-height: 300px; overflow-y: auto; }
+  .comment-item {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem;
+  }
+  .comment-author { font-family: var(--font-mono); font-size: .78rem; color: var(--cyan); margin-bottom: .3rem; }
+  .comment-text { font-size: .88rem; color: var(--text2); line-height: 1.5; }
+  .comment-time { font-size: .7rem; color: #3a5a70; margin-top: .3rem; font-family: var(--font-mono); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 2rem; border-top: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: .8rem; color: var(--text2);
+    position: relative; z-index: 1;
+  }
+  footer span { color: var(--cyan); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes pulse { from{opacity:.7} to{opacity:1} }
+  @keyframes glitch {
+    0%{text-shadow:2px 0 var(--cyan),-2px 0 var(--pink)}
+    50%{text-shadow:-2px 0 var(--cyan),2px 0 var(--pink)}
+    100%{text-shadow:2px 0 var(--cyan),-2px 0 var(--pink)}
+  }
+  .glitch { animation: glitch .4s infinite; }
+
+  .fade-in { opacity: 0; transform: translateY(24px); transition: opacity .6s, transform .6s; }
+  .fade-in.visible { opacity: 1; transform: none; }
+
+  /* ── EASTER EGG HINT ── */
+  .easter-hint { font-family: var(--font-mono); font-size: .72rem; color: #2a4a5a; text-align: center; margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<!-- BG canvas -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Matrix Overlay -->
+<div id="matrixOverlay">
+  <canvas id="matrixCanvas"></canvas>
+  <div id="matrixMsg">⚡ HACKER MODE ACTIVATED ⚡<br><small style="font-size:.5em;font-family:monospace;color:#7fff7a">Welcome to the matrix, Akash.</small></div>
+  <button id="matrixClose" onclick="closeMatrix()">[ EXIT MATRIX ]</button>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">Akash<span style="color:var(--purple)">.dev</span></a>
+  <button id="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#game-section">Game</a></li>
+    <li><a href="#feedback">Feedback</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-img-wrap">
+    <img src="image1.jpg" alt="Akash" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div class="img-fallback" style="display:none">A</div>
+  </div>
+  <div class="hero-handle">// Akash.dev</div>
+  <h1 class="hero-name">Swarnadeep Nandi<br><span style="font-size:.6em;color:var(--purple)">(Akash)</span></h1>
+  <p class="hero-tag">
+    <span>9th Grade</span> · Young Developer · Electronics Hobbyist · Gamer<br>
+    Building the future, one line of code at a time.
+  </p>
+  <div class="hero-cta">
+    <a href="#projects" class="btn btn-primary">⚡ See My Work</a>
+    <a href="#feedback" class="btn btn-outline">💬 Say Hi</a>
+  </div>
+  <div class="scroll-hint">↓ scroll to explore ↓</div>
+  <p class="easter-hint">// try typing "AKASH" on your keyboard 👀</p>
+</section>
+
+<!-- ABOUT -->
+<section id="about" class="fade-in">
+  <div class="sec-header">
+    <div class="sec-eyebrow">// whoami</div>
+    <h2 class="sec-title">About <span class="accent">Me</span></h2>
+    <div class="sec-divider"></div>
+  </div>
+  <div class="about-grid">
+    <div class="about-text">
+      <p>Hey! I'm <strong>Akash</strong> — a 15-year-old 9th grader who's completely obsessed with technology. I started coding when I was 13 and haven't stopped since.</p>
+      <p>I love building <strong>real web apps</strong>, messing with <strong>ESP32 microcontrollers</strong>, and finding that sweet spot where software meets hardware. When I'm not coding, I'm gaming or taking apart electronics to see how they tick.</p>
+      <p>My goal? Build something that actually <strong>helps people</strong> — not just another to-do list app. Currently working on voice assistants and community tools.</p>
+      <div class="info-pills">
+        <span class="pill">📍 India</span>
+        <span class="pill">🎓 Class 9</span>
+        <span class="pill">🎮 Gamer</span>
+        <span class="pill">⚡ ESP32</span>
+        <span class="pill">🔥 Firebase</span>
+        <span class="pill">💻 Open Source</span>
+      </div>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="t-dot r"></span><span class="t-dot y"></span><span class="t-dot g"></span>
+        <span class="terminal-title">akash@dev:~$ terminal</span>
+      </div>
+      <div class="terminal-body" id="termOutput">
+        <div class="t-line t-info">Welcome to Akash's Terminal v1.0</div>
+        <div class="t-line t-info">Type <span style="color:var(--yellow)">'help'</span> to see available commands.</div>
+        <div class="t-line">&nbsp;</div>
+      </div>
+      <div class="t-input-row">
+        <span class="t-input-prefix"><span class="t-prompt">akash</span><span style="color:#fff">@</span><span class="t-path">dev</span>:~$ </span>
+        <input id="termInput" type="text" autocomplete="off" placeholder="type a command..." spellcheck="false"/>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROJECTS -->
+<section id="projects" class="fade-in">
+  <div class="sec-header">
+    <div class="sec-eyebrow">// ls -la ./projects</div>
+    <h2 class="sec-title">My <span class="accent">Projects</span></h2>
+    <div class="sec-divider"></div>
+  </div>
+  <div class="projects-grid">
+
+    <div class="card fade-in">
+      <span class="card-badge badge-live">● Live</span>
+      <img class="card-img" src="image2.jpg" alt="Chanda Management App" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="card-img-fallback" style="display:none">💰</div>
+      <div class="card-body">
+        <div class="card-tag">Firebase · Web App</div>
+        <div class="card-title">Chanda Management App</div>
+        <div class="card-desc">A smart web application built with Firebase to help communities track and manage their funds transparently. Real-time database, auth, and ledger system.</div>
+      </div>
+    </div>
+
+    <div class="card fade-in">
+      <span class="card-badge badge-live">● Live</span>
+      <img class="card-img" src="image3.jpg" alt="Web-Based Mirror App" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="card-img-fallback" style="display:none">🪞</div>
+      <div class="card-body">
+        <div class="card-tag">JavaScript · Camera API</div>
+        <div class="card-title">Web-Based Mirror App</div>
+        <div class="card-desc">A browser-based mirror that accesses your camera hardware using the MediaDevices API — no installs, just open and see yourself.</div>
+      </div>
+    </div>
+
+    <div class="card fade-in">
+      <span class="card-badge badge-upcoming">⏳ Soon</span>
+      <img class="card-img" src="image4.jpg" alt="ESP32 Voice Assistant" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="card-img-fallback" style="display:none">🤖</div>
+      <div class="card-body">
+        <div class="card-tag">ESP32 · Hardware · RTC</div>
+        <div class="card-title">ESP32 Voice Assistant Box</div>
+        <div class="card-desc">An upcoming hardware project — a physical voice assistant box with an ESP32 brain, RTC module for accurate time/date, and speaker output.</div>
+      </div>
+    </div>
+
+    <div class="card fade-in">
+      <span class="card-badge badge-live">● Live</span>
+      <img class="card-img" src="image5.jpg" alt="Retro JS Game" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="card-img-fallback" style="display:none">🎮</div>
+      <div class="card-body">
+        <div class="card-tag">JavaScript · Canvas</div>
+        <div class="card-title">Retro JavaScript Mini-Game</div>
+        <div class="card-desc">An interactive retro game built directly into this portfolio page using pure Canvas API and vanilla JavaScript. No frameworks, just raw code.</div>
+      </div>
+    </div>
+
+    <div class="card fade-in">
+      <span class="card-badge badge-live">● Live</span>
+      <img class="card-img" src="image6.jpg" alt="AI Chatbot" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="card-img-fallback" style="display:none">🧠</div>
+      <div class="card-body">
+        <div class="card-tag">Gemini API · AI</div>
+        <div class="card-title">AI Interactive Assistant</div>
+        <div class="card-desc">An integrated chatbot powered by Google's Gemini API. Ask it anything about Akash — it knows everything and answers in a friendly, witty tone.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="game-section" class="fade-in">
+  <div class="sec-header">
+    <div class="sec-eyebrow">// ./play-game.sh</div>
+    <h2 class="sec-title">Snake <span class="accent">Game</span></h2>
+    <div class="sec-divider"></div>
+    <p style="color:var(--text2);font-size:.9rem;margin-top:.8rem">Use arrow keys or WASD to play. Don't feed the snake too much!</p>
+  </div>
+  <div id="snakeWrap">
+    <canvas id="snakeCanvas" width="360" height="360"></canvas>
+  </div>
+  <div class="game-controls">
+    <div class="game-score-box">SCORE: <span id="scoreDisplay">0</span></div>
+    <div class="game-score-box">BEST: <span id="bestDisplay">0</span></div>
+    <button class="btn btn-green" id="startBtn" onclick="startGame()">▶ Start</button>
+  </div>
+  <p class="game-hint">Mobile? Use the buttons below ↓</p>
+  <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem;flex-wrap:wrap">
+    <button class="btn btn-outline" onclick="setDir(0,-1)">▲</button>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-outline" onclick="setDir(-1,0)">◀</button>
+      <button class="btn btn-outline" onclick="setDir(0,1)">▼</button>
+      <button class="btn btn-outline" onclick="setDir(1,0)">▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- FEEDBACK -->
+<section id="feedback" class="fade-in">
+  <div class="sec-header">
+    <div class="sec-eyebrow">// firebase.connect()</div>
+    <h2 class="sec-title">Feedback <span class="accent">Zone</span></h2>
+    <div class="sec-divider"></div>
+  </div>
+  <div class="feedback-grid">
+    <div>
+      <div class="glass-card" style="margin-bottom:1.5rem">
+        <div class="stat-box">
+          <span class="stat-icon">👁️</span>
+          <div>
+            <div class="stat-num" id="visitorCount">--</div>
+            <div class="stat-label">Total Visitors</div>
+          </div>
+        </div>
+        <div class="stat-box">
+          <span class="stat-icon">❤️</span>
+          <div>
+            <div class="stat-num" id="likeCount">--</div>
+            <div class="stat-label">Portfolio Likes</div>
+          </div>
+        </div>
+        <button id="likeBtn" onclick="toggleLike()">
+          <span id="likeIcon">❤️</span> Like This Portfolio
+        </button>
+      </div>
+      <div class="glass-card">
+        <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:1rem;color:var(--cyan)">💬 Leave a Comment</h3>
+        <div class="comment-form">
+          <input type="text" id="commentName" placeholder="Your name (optional)"/>
+          <textarea id="commentText" placeholder="Write something nice..."></textarea>
+          <button class="btn btn-primary" id="submitComment" onclick="submitComment()">Send Message ✉️</button>
+        </div>
+      </div>
+    </div>
+    <div class="glass-card">
+      <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:1rem;color:var(--cyan)">📨 Messages</h3>
+      <div class="comment-list" id="commentList">
+        <p style="color:var(--text2);font-size:.85rem;font-family:var(--font-mono)">Loading comments...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Built with <span>⚡</span> by <span>Swarnadeep Nandi (Akash)</span> · Class 9 · 2025</p>
+  <p style="margin-top:.4rem;font-size:.7rem">Powered by Firebase · Gemini AI · Vanilla JS</p>
+</footer>
+
+<!-- MUTE + CHAT -->
+<button id="muteBtn" onclick="toggleMute()" title="Mute/Unmute">🔊</button>
+<button id="chatToggle" onclick="toggleChat()" title="Chat with AI">🤖</button>
+<div id="chatBox">
+  <div id="chatHeader">
+    <span>🤖 Chat with Akash's AI</span>
+    <button onclick="toggleChat()" style="background:none;border:none;color:#000;font-size:1.1rem;cursor:pointer">✕</button>
+  </div>
+  <div id="chatMessages">
+    <div class="chat-msg ai">Hey! I'm Akash's AI assistant. Ask me anything about him — his projects, skills, or just say hi! 👋</div>
+  </div>
+  <div id="chatInputRow">
+    <input id="chatInput" type="text" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendChat()"/>
+    <button id="chatSend" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, orderBy, onSnapshot, increment, updateDoc, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAex4ljGX2jDiChxmoc-W8jIT__VqUYSyQ",
+    authDomain: "portfolio-98911.firebaseapp.com",
+    projectId: "portfolio-98911",
+    storageBucket: "portfolio-98911.firebasestorage.app",
+    messagingSenderId: "379238548189",
+    appId: "1:379238548189:web:c0b442dae7633db428d134"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  /* ── VISITOR COUNTER ── */
+  const statsRef = doc(db, "portfolio", "stats");
+  async function initStats() {
+    try {
+      const snap = await getDoc(statsRef);
+      if (!snap.exists()) {
+        await setDoc(statsRef, { visitors: 1, likes: 0 });
+      } else {
+        const sid = sessionStorage.getItem("visited");
+        if (!sid) {
+          sessionStorage.setItem("visited", "1");
+          await updateDoc(statsRef, { visitors: increment(1) });
+        }
+      }
+      const s = (await getDoc(statsRef)).data();
+      document.getElementById("visitorCount").textContent = s.visitors;
+      document.getElementById("likeCount").textContent = s.likes;
+    } catch(e) { console.warn("Stats error:", e); }
+  }
+  initStats();
+
+  /* ── LIKE BUTTON ── */
+  window.toggleLike = async function() {
+    const btn = document.getElementById("likeBtn");
+    if (localStorage.getItem("liked")) return;
+    localStorage.setItem("liked", "1");
+    btn.disabled = true;
+    document.getElementById("likeIcon").textContent = "💖";
+    playSound("like");
+    try {
+      await updateDoc(statsRef, { likes: increment(1) });
+      const s = (await getDoc(statsRef)).data();
+      document.getElementById("likeCount").textContent = s.likes;
+    } catch(e) { console.warn(e); }
+  };
+  if (localStorage.getItem("liked")) {
+    const b = document.getElementById("likeBtn");
+    b.disabled = true;
+    document.getElementById("likeIcon").textContent = "💖";
+  }
+
+  /* ── COMMENTS ── */
+  window.submitComment = async function() {
+    const name = document.getElementById("commentName").value.trim() || "Anonymous";
+    const text = document.getElementById("commentText").value.trim();
+    if (!text) return;
+    try {
+      await addDoc(collection(db, "comments"), { name, text, ts: serverTimestamp() });
+      document.getElementById("commentText").value = "";
+      document.getElementById("commentName").value = "";
+    } catch(e) { alert("Couldn't post comment. Try again!"); console.warn(e); }
+  };
+
+  const q = query(collection(db, "comments"), orderBy("ts", "desc"));
+  onSnapshot(q, snap => {
+    const list = document.getElementById("commentList");
+    if (snap.empty) { list.innerHTML = '<p style="color:var(--text2);font-size:.85rem;font-family:var(--font-mono)">No comments yet. Be the first! 🎉</p>'; return; }
+    list.innerHTML = "";
+    snap.forEach(d => {
+      const { name, text, ts } = d.data();
+      const time = ts ? new Date(ts.seconds*1000).toLocaleString() : "Just now";
+      list.innerHTML += `<div class="comment-item"><div class="comment-author">${name}</div><div class="comment-text">${text}</div><div class="comment-time">${time}</div></div>`;
+    });
+  });
+</script>
+
+<script>
+/* ══════════════════════════════════════
+   BACKGROUND PARTICLE CANVAS
+══════════════════════════════════════ */
+(function(){
+  const c = document.getElementById("bgCanvas");
+  const ctx = c.getContext("2d");
+  let W, H, pts = [];
+  function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; }
+  resize(); addEventListener("resize", resize);
+  for(let i=0;i<60;i++) pts.push({ x:Math.random()*2000, y:Math.random()*1200, vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3 });
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1; });
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.sqrt(dx*dx+dy*dy);
+      if(d<160){ ctx.strokeStyle=`rgba(0,255,229,${(1-d/160)*.25})`; ctx.lineWidth=.8; ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke(); }
+    }
+    pts.forEach(p=>{ ctx.fillStyle="rgba(0,255,229,0.55)"; ctx.beginPath(); ctx.arc(p.x,p.y,1.5,0,Math.PI*2); ctx.fill(); });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ══════════════════════════════════════
+   FADE-IN ON SCROLL
+══════════════════════════════════════ */
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add("visible"); });
+}, {threshold:.12});
+document.querySelectorAll(".fade-in").forEach(el=>obs.observe(el));
+
+/* ══════════════════════════════════════
+   TERMINAL
+══════════════════════════════════════ */
+const termOut = document.getElementById("termOutput");
+const termIn  = document.getElementById("termInput");
+
+const COMMANDS = {
+  help: () => [
+    {cls:"t-info", txt:"Available commands:"},
+    {cls:"t-out",  txt:"  skills     - List all skills"},
+    {cls:"t-out",  txt:"  about      - Who is Akash?"},
+    {cls:"t-out",  txt:"  projects   - List projects"},
+    {cls:"t-out",  txt:"  contact    - Contact info"},
+    {cls:"t-out",  txt:"  games      - Easter eggs 👀"},
+    {cls:"t-out",  txt:"  clear      - Clear terminal"},
+    {cls:"t-out",  txt:"  whoami     - Identity check"},
+  ],
+  skills: () => [
+    {cls:"t-info", txt:"[ SKILLS LOADED ]"},
+    {cls:"t-out",  txt:"Frontend  : HTML5, CSS3, JavaScript (ES6+)"},
+    {cls:"t-out",  txt:"Backend   : Firebase (Firestore, Auth, Hosting)"},
+    {cls:"t-out",  txt:"Languages : C Programming, JavaScript"},
+    {cls:"t-out",  txt:"Hardware  : ESP32, Arduino, RTC Modules"},
+    {cls:"t-out",  txt:"Tools     : Git, VS Code, Figma (basic)"},
+    {cls:"t-out",  txt:"Learning  : Python, React (soon...)"},
+  ],
+  about: () => [
+    {cls:"t-info", txt:"[ PROFILE: AKASH ]"},
+    {cls:"t-out",  txt:"Name    : Swarnadeep Nandi (Akash)"},
+    {cls:"t-out",  txt:"Age     : 15 years"},
+    {cls:"t-out",  txt:"Class   : 9th Grade"},
+    {cls:"t-out",  txt:"Based   : India"},
+    {cls:"t-out",  txt:"Status  : Building cool stuff 24/7"},
+  ],
+  projects: () => [
+    {cls:"t-info", txt:"[ PROJECTS ]"},
+    {cls:"t-out",  txt:"1. Chanda Management App (Firebase)"},
+    {cls:"t-out",  txt:"2. Web-Based Mirror App"},
+    {cls:"t-out",  txt:"3. ESP32 Voice Assistant Box (WIP)"},
+    {cls:"t-out",  txt:"4. Retro JS Mini-Game"},
+    {cls:"t-out",  txt:"5. AI Interactive Assistant (Gemini)"},
+  ],
+  contact: () => [
+    {cls:"t-info", txt:"[ CONTACT ]"},
+    {cls:"t-out",  txt:"Email  : ask the chatbot 🤖"},
+    {cls:"t-out",  txt:"GitHub : @akash-dev (check bio)"},
+    {cls:"t-out",  txt:"Discord: ask Akash directly"},
+  ],
+  games: () => [
+    {cls:"t-info", txt:"[ SECRET ]"},
+    {cls:"t-out",  txt:"Try typing 'AKASH' on your keyboard..."},
+    {cls:"t-out",  txt:"Or scroll down to play Snake 🐍"},
+  ],
+  whoami: () => [
+    {cls:"t-out",  txt:"akash — a 15yr old who codes at 2am"},
+  ],
+  clear: () => "CLEAR"
+};
+
+function addTermLines(lines) {
+  lines.forEach(l => {
+    const d = document.createElement("div");
+    d.className = "t-line " + (l.cls||"");
+    d.textContent = l.txt;
+    termOut.appendChild(d);
+  });
+  termOut.scrollTop = termOut.scrollHeight;
+}
+
+termIn.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const cmd = termIn.value.trim().toLowerCase();
+  termIn.value = "";
+  // echo
+  const echo = document.createElement("div");
+  echo.className = "t-line";
+  echo.innerHTML = `<span class="t-prompt">akash</span><span style="color:#fff">@</span><span class="t-path">dev</span>:~$ <span class="t-cmd">${cmd}</span>`;
+  termOut.appendChild(echo);
+  if (!cmd) return;
+  const fn = COMMANDS[cmd];
+  if (!fn) {
+    addTermLines([{cls:"t-err", txt:`bash: ${cmd}: command not found. Type 'help'.`}]);
+  } else {
+    const res = fn();
+    if (res === "CLEAR") { termOut.innerHTML = ""; } else { addTermLines(res); }
+  }
+});
+
+/* ══════════════════════════════════════
+   AUDIO ENGINE (Web Audio API)
+══════════════════════════════════════ */
+let audioCtx = null;
+let muted = false;
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playSound(type) {
+  if (muted) return;
+  try {
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if (type === "like") {
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      osc.frequency.setValueAtTime(660, ctx.currentTime+.1);
+      osc.frequency.setValueAtTime(880, ctx.currentTime+.2);
+      gain.gain.setValueAtTime(.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.4);
+      osc.start(); osc.stop(ctx.currentTime+.4);
+    } else if (type === "score") {
+      osc.type = "square";
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.setValueAtTime(550, ctx.currentTime+.08);
+      gain.gain.setValueAtTime(.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.25);
+      osc.start(); osc.stop(ctx.currentTime+.25);
+    } else if (type === "die") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime+.3);
+      gain.gain.setValueAtTime(.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.35);
+      osc.start(); osc.stop(ctx.currentTime+.35);
+    }
+  } catch(e){}
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+}
+window.toggleMute = toggleMute;
+
+/* ══════════════════════════════════════
+   SNAKE GAME
+══════════════════════════════════════ */
+const sc = document.getElementById("snakeCanvas");
+const sctx = sc.getContext("2d");
+const SZ = 18, COLS = 20, ROWS = 20;
+let snake, dir, nextDir, food, score, best = 0, gameRunning = false, gameLoop;
+
+function rndFood(){
+  let pos;
+  do { pos = {x:Math.floor(Math.random()*COLS), y:Math.floor(Math.random()*ROWS)}; }
+  while(snake.some(s=>s.x===pos.x&&s.y===pos.y));
+  return pos;
+}
+
+function startGame(){
+  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir = {x:1,y:0}; nextDir = {x:1,y:0};
+  score = 0; document.getElementById("scoreDisplay").textContent = 0;
+  food = rndFood();
+  if(gameLoop) clearInterval(gameLoop);
+  gameRunning = true;
+  document.getElementById("startBtn").textContent = "⟳ Restart";
+  gameLoop = setInterval(tick, 115);
+}
+window.startGame = startGame;
+
+function setDir(x,y){ if(!(x===-dir.x&&y===0)&&!(y===-dir.y&&x===0)) nextDir={x,y}; }
+window.setDir = setDir;
+
+document.addEventListener("keydown", e=>{
+  const map = {"ArrowUp":[0,-1],"ArrowDown":[0,1],"ArrowLeft":[-1,0],"ArrowRight":[1,0],"w":[0,-1],"s":[0,1],"a":[-1,0],"d":[1,0]};
+  if(map[e.key]){ e.preventDefault(); setDir(...map[e.key]); }
+});
+
+function tick(){
+  dir = nextDir;
+  const head = {x:(snake[0].x+dir.x+COLS)%COLS, y:(snake[0].y+dir.y+ROWS)%ROWS};
+  if(snake.some(s=>s.x===head.x&&s.y===head.y)){ endGame(); return; }
+  snake.unshift(head);
+  if(head.x===food.x&&head.y===food.y){
+    score++; document.getElementById("scoreDisplay").textContent=score;
+    if(score>best){ best=score; document.getElementById("bestDisplay").textContent=best; }
+    food=rndFood(); playSound("score");
+  } else { snake.pop(); }
+  drawSnake();
+}
+
+function drawSnake(){
+  sctx.fillStyle="#010a05"; sctx.fillRect(0,0,sc.width,sc.height);
+  // grid
+  sctx.strokeStyle="rgba(57,255,20,0.06)"; sctx.lineWidth=.5;
+  for(let x=0;x<=COLS;x++){ sctx.beginPath(); sctx.moveTo(x*SZ,0); sctx.lineTo(x*SZ,ROWS*SZ); sctx.stroke(); }
+  for(let y=0;y<=ROWS;y++){ sctx.beginPath(); sctx.moveTo(0,y*SZ); sctx.lineTo(COLS*SZ,y*SZ); sctx.stroke(); }
+  // food
+  sctx.shadowColor="#ff3b3b"; sctx.shadowBlur=12;
+  sctx.fillStyle="#ff3b3b"; sctx.beginPath(); sctx.arc(food.x*SZ+SZ/2,food.y*SZ+SZ/2,SZ/2-2,0,Math.PI*2); sctx.fill();
+  sctx.shadowBlur=0;
+  // snake
+  snake.forEach((s,i)=>{
+    const g = sctx.createLinearGradient(s.x*SZ,s.y*SZ,s.x*SZ+SZ,s.y*SZ+SZ);
+    g.addColorStop(0,i===0?"#00ffe5":"#00ccb8"); g.addColorStop(1,i===0?"#a855f7":"#1a7a6a");
+    sctx.fillStyle=g;
+    sctx.shadowColor=i===0?"#00ffe5":"#00ccb8"; sctx.shadowBlur=i===0?14:4;
+    sctx.beginPath(); sctx.roundRect(s.x*SZ+1,s.y*SZ+1,SZ-2,SZ-2,4); sctx.fill();
+    sctx.shadowBlur=0;
+  });
+}
+
+function endGame(){
+  clearInterval(gameLoop); gameRunning=false; playSound("die");
+  sctx.fillStyle="rgba(0,0,0,0.7)"; sctx.fillRect(0,0,sc.width,sc.height);
+  sctx.fillStyle="#ff3b3b"; sctx.font="bold 22px 'Orbitron',sans-serif"; sctx.textAlign="center";
+  sctx.shadowColor="#ff3b3b"; sctx.shadowBlur=20;
+  sctx.fillText("GAME OVER", sc.width/2, sc.height/2-16);
+  sctx.shadowBlur=0;
+  sctx.fillStyle="#00ffe5"; sctx.font="14px 'Share Tech Mono',monospace";
+  sctx.fillText(`Score: ${score}  Best: ${best}`, sc.width/2, sc.height/2+14);
+  sctx.fillStyle="#7a9ab5"; sctx.font="12px 'Share Tech Mono',monospace";
+  sctx.fillText("Click Restart to play again", sc.width/2, sc.height/2+40);
+}
+
+// draw idle
+(function idle(){
+  sctx.fillStyle="#010a05"; sctx.fillRect(0,0,sc.width,sc.height);
+  sctx.fillStyle="#00ffe5"; sctx.font="bold 20px 'Orbitron',sans-serif"; sctx.textAlign="center";
+  sctx.shadowColor="#00ffe5"; sctx.shadowBlur=20;
+  sctx.fillText("SNAKE", sc.width/2, sc.height/2-10);
+  sctx.shadowBlur=0;
+  sctx.fillStyle="#7a9ab5"; sctx.font="12px 'Share Tech Mono',monospace";
+  sctx.fillText("Press Start to play", sc.width/2, sc.height/2+20);
+})();
+
+/* ══════════════════════════════════════
+   EASTER EGG — type AKASH
+══════════════════════════════════════ */
+let easterSeq = "", easterTarget = "AKASH";
+const matrixCanvas = document.getElementById("matrixCanvas");
+const mctx = matrixCanvas.getContext("2d");
+let matrixInterval;
+
+document.addEventListener("keydown", e=>{
+  if(e.target===termIn||e.target===document.getElementById("chatInput")) return;
+  easterSeq += e.key.toUpperCase();
+  if(easterSeq.length > easterTarget.length) easterSeq = easterSeq.slice(-easterTarget.length);
+  if(easterSeq === easterTarget) { triggerMatrix(); easterSeq=""; }
+});
+
+function triggerMatrix(){
+  const overlay = document.getElementById("matrixOverlay");
+  overlay.classList.add("active");
+  matrixCanvas.width = innerWidth; matrixCanvas.height = innerHeight;
+  const cols = Math.floor(innerWidth/14);
+  const drops = Array(cols).fill(0);
+  matrixInterval = setInterval(()=>{
+    mctx.fillStyle="rgba(0,0,0,0.05)"; mctx.fillRect(0,0,matrixCanvas.width,matrixCanvas.height);
+    mctx.fillStyle="#39ff14"; mctx.font="13px 'Share Tech Mono',monospace";
+    drops.forEach((y,i)=>{
+      const char = String.fromCharCode(33+Math.floor(Math.random()*93));
+      mctx.fillText(char, i*14, y*14);
+      drops[i] = (y*14>matrixCanvas.height&&Math.random()>.97) ? 0 : y+1;
+    });
+  }, 45);
+}
+
+function closeMatrix(){
+  document.getElementById("matrixOverlay").classList.remove("active");
+  clearInterval(matrixInterval);
+}
+window.closeMatrix = closeMatrix;
+
+/* ══════════════════════════════════════
+   CHAT — GEMINI API
+══════════════════════════════════════ */
+const GEMINI_API_KEY = "AQ.Ab8RN6L2mbMOwD7JAUKHRXWupmATrgx4GJ386hVTGik_ulpudw";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+const SYSTEM_CONTEXT = `You are the AI portfolio assistant for Swarnadeep Nandi, known as "Akash", a 15-year-old 9th-grade student and tech enthusiast from India.
+
+About Akash:
+- He's a young developer who builds real web apps, works with ESP32 microcontrollers, and loves gaming.
+- Skills: HTML5, CSS3, JavaScript, Firebase, C Programming, ESP32
+- Projects: Chanda Management App (Firebase), Web-Based Mirror App, ESP32 Voice Assistant Box (upcoming), Retro JS Mini-Game, AI Interactive Assistant
+- He's 15, in class 9, passionate about electronics and coding
+- Friendly, witty, slightly geeky personality
+
+Respond in a friendly, witty, conversational tone. Keep answers concise. If asked about contact info, say to check the feedback section. Always stay in character as Akash's portfolio assistant.`;
+
+let chatHistory = [];
+
+function toggleChat(){
+  const box = document.getElementById("chatBox");
+  box.classList.toggle("open");
+}
+window.toggleChat = toggleChat;
+
+async function sendChat(){
+  const input = document.getElementById("chatInput");
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value = "";
+  appendChat("user", msg);
+  const typing = appendChat("ai", "typing...", true);
+  chatHistory.push({role:"user", parts:[{text:msg}]});
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        contents: [{role:"user",parts:[{text:SYSTEM_CONTEXT}]},...chatHistory],
+        generationConfig: {maxOutputTokens:300,temperature:.8}
+      })
+    });
+    const data = await res.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm, my circuits are a bit fuzzy. Try again!";
+    typing.remove();
+    appendChat("ai", reply);
+    chatHistory.push({role:"model", parts:[{text:reply}]});
+  } catch(e) {
+    typing.remove();
+    appendChat("ai","Oops! Connection issue. Check your network.");
+  }
+}
+window.sendChat = sendChat;
+
+function appendChat(role, text, isTyping=false){
+  const msgs = document.getElementById("chatMessages");
+  const d = document.createElement("div");
+  d.className = "chat-msg " + role + (isTyping?" typing":"");
+  d.textContent = text;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+
+document.getElementById("chatInput").addEventListener("keydown", e=>{ if(e.key==="Enter") sendChat(); });
+</script>
+</body>
+</html>
